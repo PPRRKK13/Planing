@@ -24,4 +24,4 @@ st.write("Table Data")
 st.dataframe(table_df)
 st.write("Item Data")
 st.dataframe(item_df)
-st.write("Available sheets:", xls.sheet_names)
+
