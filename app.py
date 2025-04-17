@@ -24,6 +24,7 @@ def load_data():
 table_df, item_df = load_data()
 
 
+
 # Clean up item names
 table_df["Batch"] = table_df["Batch"].astype(str).str.strip()
 item_df["item"] = item_df["item"].astype(str).str.strip()
