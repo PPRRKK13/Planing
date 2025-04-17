@@ -1,15 +1,15 @@
 
-import re
+import os
 
-# Read the original script
-with open("app.py", "r", encoding="utf-8") as file:
-    content = file.read()
+def clean_file(file_path):
+    with open(file_path, "r", encoding="utf-8") as file:
+        content = file.read()
 
-# Remove non-printable characters
-clean_content = re.sub(r'[^\x20-\x7E]', '', content)
+    # Remove non-printable characters
+    clean_content = ''.join(char for char in content if char.isprintable() or char.isspace())
 
-# Write the cleaned content back to the file
-with open("app_cleaned.py", "w", encoding="utf-8") as file:
-    file.write(clean_content)
+    clean_file_path = os.path.splitext(file_path)[0] + "_cleaned.py"
+    with open(clean_file_path, "w", encoding="utf-8") as file:
+        file.write(clean_content)
 
-print("Script cleaned and saved as 'app_cleaned.py'")
+    print(f"Script cleaned and saved as '{clean_file_path}'")
