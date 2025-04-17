@@ -7,7 +7,13 @@ st.title("📦 Production Planning Tool")
 # Load Excel
 @st.cache_data
 def load_data():
-    xls = pd.ExcelFile("For Phyton.xlsx")
+    import os
+file_path = "For Phyton.xlsx"
+if not os.path.exists(file_path):
+    st.error("Excel file not found. Please make sure 'For Phyton.xlsx' is in the same folder as this app.")
+    st.stop()
+
+xls = pd.ExcelFile(file_path)
     table_df = xls.parse("Table")
     item_df = xls.parse("Item sizes per meter")
     return table_df, item_df
