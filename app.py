@@ -15,7 +15,6 @@ def load_data():
     table_df = xls.parse("Table")
     item_df = xls.parse("Item sizes per meter")
     return table_df, item_df
-
 table_df, item_df = load_data()
 
 # Clean up item names
