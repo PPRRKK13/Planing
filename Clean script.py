@@ -13,3 +13,6 @@ def clean_file(file_path):
         file.write(clean_content)
 
     print(f"Script cleaned and saved as '{clean_file_path}'")
+
+# Clean the app.py script
+clean_file("app.py")
