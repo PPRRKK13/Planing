@@ -24,3 +24,5 @@ st.write("Table Data")
 st.dataframe(table_df)
 st.write("Item Data")
 st.dataframe(item_df)
+
+Fix: removed non-printable character error
