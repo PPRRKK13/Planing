@@ -13,7 +13,7 @@ print(f"File path: {file_path}")
 
 @st.cache_data
 def load_data():
-    if not os.path.exists(file_path):
+    if not os.path.exists(file_path)
         st.error("❌ Excel file 'For Phyton.xlsx' not found. Please ensure it's in the same directory as 'app.py'.")
         st.stop()
     xls = pd.ExcelFile(file_path)
