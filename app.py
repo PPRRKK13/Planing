@@ -13,7 +13,7 @@ def load_data():
         st.stop()
     xls = pd.ExcelFile(file_path)
     table_df = xls.parse("Table")
-    item_df = xls.parse("Item sizes per meter")
+    item_df = xls.parse("Item Sizes per meter")
     return table_df, item_df
 
 table_df, item_df = load_data()
