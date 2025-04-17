@@ -1,20 +1,15 @@
+import os
 import streamlit as st
 import pandas as pd
-import os
 
+# Set correct file path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(current_dir, "For Phyton.xlsx")
 
-st.write("📁 Current Directory:", os.getcwd())
-st.write("📂 Files Available:", os.listdir())
-
-st.set_page_config(layout="wide")
-st.title("📦 Production Planning Tool")
-
-# Load Excel
 @st.cache_data
 def load_data():
-    file_path = "For Phyton.xlsx"
     if not os.path.exists(file_path):
-        st.error("❌ Excel file 'For Phyton.xlsx' not found. Make sure it's in the same folder as app.py.")
+        st.error("❌ Excel file 'For Phyton.xlsx' not found. Please ensure it's in the same directory as 'app.py'.")
         st.stop()
     xls = pd.ExcelFile(file_path)
     table_df = xls.parse("Table")
