@@ -1,84 +1,85 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+
+# ==== Embedded Data ====
+
+table_data = [
+    {"Batch": "19x75", "Quality": "Q1", "Volume [m3]": 10.5},
+    {"Batch": "19x75", "Quality": "Q2", "Volume [m3]": 2.3},
+    {"Batch": "25x100", "Quality": "Q1", "Volume [m3]": 15.2},
+    {"Batch": "25x100", "Quality": "Q3", "Volume [m3]": 1.8},
+    {"Batch": "32x125", "Quality": "Q1", "Volume [m3]": 20.0},
+]
+
+items_data = [
+    {"item": "19x75", "m3_per_meter": 0.00143},
+    {"item": "25x100", "m3_per_meter": 0.0025},
+    {"item": "32x125", "m3_per_meter": 0.0040},
+]
+
+shifts = [
+    {"day": "Monday", "start": "07:00", "end": "19:00"},
+    {"day": "Monday", "start": "19:00", "end": "07:00"},
+    {"day": "Tuesday", "start": "07:00", "end": "19:00"},
+    {"day": "Tuesday", "start": "19:00", "end": "07:00"},
+    {"day": "Wednesday", "start": "07:00", "end": "19:00"},
+    {"day": "Wednesday", "start": "19:00", "end": "07:00"},
+    {"day": "Thursday", "start": "07:00", "end": "16:30"},
+    {"day": "Thursday", "start": "20:30", "end": "06:00"},
+]
+
+# ==== Streamlit UI ====
 
 st.set_page_config(layout="wide")
-st.title("📏 Production Planner with Q1 Yield")
+st.title("📏 Production Planning App")
 
-# ---- Upload Excel File ----
-uploaded_file = st.file_uploader("📤 Upload your Excel file", type=["xlsx"])
+# Sidebar inputs
+st.sidebar.header("🔧 Planning Settings")
+availability = st.sidebar.slider("Availability (%)", 50, 100, 85) / 100.0
+speed = st.sidebar.number_input("Line Speed (m/min)", min_value=1, value=70)
 
-if uploaded_file:
-    # ---- Load Data ----
-    xls = pd.ExcelFile(uploaded_file)
-    table_df = xls.parse("Table")
-    items_df = xls.parse("Item Sizes per meter")
-    hours_df = xls.parse("Hours per day")
+# Item selection
+st.subheader("📦 Item Selection")
+item_inputs = []
+for item in items_data:
+    with st.expander(f"Item: {item['item']}"):
+        meters = st.number_input(f"Enter needed meters for {item['item']}", key=item['item'], value=0)
+        if meters > 0:
+            item_inputs.append({
+                "item": item['item'],
+                "meters": meters,
+                "m3_per_meter": item["m3_per_meter"]
+            })
 
-    # Clean item size table
-    items_cleaned = items_df.rename(columns={items_df.columns[0]: "Item", items_df.columns[1]: "M3 per meter"})
+if not item_inputs:
+    st.warning("Please add meters for at least one item to calculate the plan.")
+    st.stop()
 
-    # ---- Calculate Q1 Yield ----
-    total_volume = table_df.groupby("Batch")["Volume [m3]"].sum().reset_index(name="Total Volume")
-    q1_volume = table_df[table_df["Quality"] == "Q1"].groupby("Batch")["Volume [m3]"].sum().reset_index(name="Q1 Volume")
-    q1_yield = pd.merge(q1_volume, total_volume, on="Batch")
-    q1_yield["Q1 Yield"] = q1_yield["Q1 Volume"] / q1_yield["Total Volume"]
-    q1_yield = q1_yield.rename(columns={"Batch": "Item"})
+# ==== Calculations ====
+results = []
+for item in item_inputs:
+    # Get yield % for Q1
+    q1_volume = sum(row["Volume [m3]"] for row in table_data if row["Batch"] == item["item"] and row["Quality"] == "Q1")
+    total_volume = sum(row["Volume [m3]"] for row in table_data if row["Batch"] == item["item"])
+    q1_yield = q1_volume / total_volume if total_volume > 0 else 0
 
-    # Merge with item sizes
-    item_master = pd.merge(items_cleaned, q1_yield[["Item", "Q1 Yield"]], on="Item", how="inner")
+    # Adjusted meters and production time
+    adjusted_meters = item["meters"] / q1_yield if q1_yield > 0 else 0
+    m3_needed = adjusted_meters * item["m3_per_meter"]
+    hours_needed = adjusted_meters / (speed * 60 * availability)
 
-    st.subheader("🛠 Select Items and Enter Required Meters")
-    selected_items = st.multiselect("Choose Items", item_master["Item"].unique())
+    results.append({
+        "Item": item["item"],
+        "Q1 Yield %": round(q1_yield * 100, 2),
+        "Meters Needed": item["meters"],
+        "Adjusted Meters": round(adjusted_meters, 2),
+        "M3 Needed": round(m3_needed, 2),
+        "Hours Needed": round(hours_needed, 2)
+    })
 
-    if selected_items:
-        meters_input = {}
-        for item in selected_items:
-            meters = st.number_input(f"Meters needed for {item}", min_value=0, step=100, key=item)
-            meters_input[item] = meters
+# ==== Show Result Table ====
+st.subheader("📊 Planning Summary")
+df = pd.DataFrame(results)
+st.dataframe(df)
 
-        # ---- Calculations ----
-        df = item_master[item_master["Item"].isin(meters_input.keys())].copy()
-        df["Meters Needed"] = df["Item"].map(meters_input)
-
-        speed_mph = 70 * 60  # 70 meters/min
-        df["Adjusted Meters"] = df["Meters Needed"] / df["Q1 Yield"]
-        df["Good m/h"] = speed_mph * df["Q1 Yield"]
-        df["Hours Needed"] = df["Adjusted Meters"] / df["Good m/h"]
-        df["m3 Needed"] = df["Adjusted Meters"] * df["M3 per meter"]
-
-        st.subheader("📊 Calculation Results")
-        st.dataframe(df[["Item", "Meters Needed", "Q1 Yield", "Adjusted Meters", "Hours Needed", "m3 Needed"]])
-
-        # ---- Calendar Simulation ----
-        st.subheader("📆 Monthly Production Simulation")
-
-        hours_per_day = hours_df["Hours"].iloc[0]
-        days = []
-        cumulative_hours = 0
-        day_num = 1
-
-        for i, row in df.iterrows():
-            hours_needed = row["Hours Needed"]
-            while hours_needed > 0:
-                used = min(hours_per_day, hours_needed)
-                days.append({
-                    "Day": f"Day {day_num}",
-                    "Item": row["Item"],
-                    "Hours": used
-                })
-                hours_needed -= used
-                cumulative_hours += used
-                if used == hours_per_day:
-                    day_num += 1
-
-        calendar_df = pd.DataFrame(days)
-
-        fig = px.bar(calendar_df, x="Day", y="Hours", color="Item", title="Production Plan (Hours per Day)", text="Item")
-        st.plotly_chart(fig, use_container_width=True)
-
-        # Export option
-        st.subheader("💾 Export Results")
-        export_df = df[["Item", "Meters Needed", "Q1 Yield", "Adjusted Meters", "Hours Needed", "m3 Needed"]]
-        export_excel = export_df.to_excel(index=False, engine='openpyxl')
-        st.download_button("Download Calculated Table as Excel", data=export_excel, file_name="production_plan.xlsx")
+st.success("✅ Plan created. Future versions will add calendar-based scheduling!")
