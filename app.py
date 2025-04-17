@@ -7,34 +7,16 @@ st.set_page_config(layout="wide")
 st.title("📏 Production Planner with Q1 Yield")
 
 
-# ---- Embed Excel Data ----
-# Load the embedded Excel data
-table_data = {
-    "Date": ["01/01/2024"] * 10,
-    "Supplier": ["0007"] * 10,
-    "Batch": ["19x75"] * 10,
-    "Product name": ["Waste", "Long Waste", "Blade Waste", "Full Waste Board", "Q1 FJ 18x73", "Q1 FJ 18x73 short", "Q3 18x62,5", "Q2 18x73 BLUE", "Q4 18x73 2nd size down", "Q5 18x73x2403"],
-    "Product Grade name": ["Waste", "Reserved for Waste", "Waste", "Waste", "Q1 Finger Joint", "Q1 Finger Joint", "Q3 Width", "BLUE Q2 grade", "Q3 Width", "Q1 Finger Joint"],
-    "Quality": ["Waste", "Waste", "Waste", "Waste", "Q1", "Q1", "Q3", "Q2", "Q4", "Q5"],
-    "Pieces": [63415, 25976, 0, 0, 59502, 19445, 3751, 4894, 3659, 100],
-    "Length [m]": [3530.77, 5263.21, 599.53, 0, 24304.4, 3965.93, 947.134, 1527.63, 846.612, 240.8],
-    "Volume [m3]": [4.65, 6.931, 0.79, 0, 31.999, 5.225, 1.247, 2.014, 1.115, 0.317]
-}
 
-item_sizes_data = {
-    "Item": ["19x75"] * 10,
-    "M3 per meter": [0.001] * 10
-}
-
-hours_per_day_data = {
-    "Hours": [24]
-}
-
-# Convert to DataFrames
-table_df = pd.DataFrame(table_data)
-items_df = pd.DataFrame(item_sizes_data)
-hours_df = pd.DataFrame(hours_per_day_data)
-
+ # ---- Upload Excel File ----
+ uploaded_file = st.file_uploader("📤 Upload your Excel file", type=["xlsx"])
+ 
+ if uploaded_file:
+     # ---- Load Data ----
+     xls = pd.ExcelFile(uploaded_file)
+     table_df = xls.parse("Table")
+     items_df = xls.parse("Item Sizes per meter")
+     hours_df = xls.parse("Hours per day")
 
 
 
