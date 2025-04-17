@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -6,19 +5,15 @@ import plotly.express as px
 st.set_page_config(layout="wide")
 st.title("📏 Production Planner with Q1 Yield")
 
+# ---- Upload Excel File ----
+uploaded_file = st.file_uploader("📤 Upload your Excel file", type=["xlsx"])
 
-
- # ---- Upload Excel File ----
- uploaded_file = st.file_uploader("📤 Upload your Excel file", type=["xlsx"])
- 
- if uploaded_file:
-     # ---- Load Data ----
-     xls = pd.ExcelFile(uploaded_file)
-     table_df = xls.parse("Table")
-     items_df = xls.parse("Item Sizes per meter")
-     hours_df = xls.parse("Hours per day")
-
-
+if uploaded_file:
+    # ---- Load Data ----
+    xls = pd.ExcelFile(uploaded_file)
+    table_df = xls.parse("Table")
+    items_df = xls.parse("Item Sizes per meter")
+    hours_df = xls.parse("Hours per day")
 
     # Clean item size table
     items_cleaned = items_df.rename(columns={items_df.columns[0]: "Item", items_df.columns[1]: "M3 per meter"})
