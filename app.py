@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 import os
 
+
+st.write("📁 Current Directory:", os.getcwd())
+st.write("📂 Files Available:", os.listdir())
+
 st.set_page_config(layout="wide")
 st.title("📦 Production Planning Tool")
 
