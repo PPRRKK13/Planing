@@ -32,6 +32,12 @@ def calculate_production(selected_items, meter_inputs, table_df, item_df, hours_
     item_m3_per_meter = item_df.set_index('Batch')['M3'].to_dict()
     speed_m_per_min = speed_df.iloc[0]['Speed']
 
+except IndexError:
+    print("IndexError: The DataFrame does not have enough rows.")
+except KeyError:
+    print("KeyError: The 'Speed' column is not present in the DataFrame.")
+
+
 
 
     results = []
