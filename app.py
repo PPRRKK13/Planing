@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timedelta
 
 # --- CONFIG ---
-EXCEL_FILE = "For  Phyton.xlsx"
+EXCEL_FILE = "For Phyton.xlsx"
 
 # --- FUNCTIONS ---
 @st.cache_data
