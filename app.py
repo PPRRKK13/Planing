@@ -16,6 +16,8 @@ def load_data():
     speed_df = xls.parse("Manufacturing speed")
     return table_df, item_df, hours_df, speed_df
 
+print(speed_df)
+
 
 @st.cache_data
 def get_available_items(table_df):
