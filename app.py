@@ -8,13 +8,19 @@ EXCEL_FILE = "For Phyton.xlsx"
 
 # --- FUNCTIONS ---
 @st.cache_data
-def load_data():
-    xls = pd.ExcelFile(EXCEL_FILE)
+def load_data(file_path="For Phyton.xlsx"):
+    if not os.path.exists(file_path):
+        st.error("❌ Excel file not found. Make sure it's named 'For Phyton.xlsx' and in the same folder.")
+        st.stop()
+
+    xls = pd.ExcelFile(file_path)
     table_df = xls.parse("Table")
-    item_df = xls.parse("Item Sizes per meter")
+    item_df = xls.parse("Item sizes per meter")
+    speed_df = xls.parse("Manufacturing speed")
     hours_df = xls.parse("Hours per day")
-    speed_df = 70
-    return table_df, item_df, hours_df, speed_df
+    holiday_df = xls.parse("Holidays")
+
+    return table_df, item_df, speed_df, hours_df, holiday_df
 
 
 @st.cache_data
@@ -30,7 +36,7 @@ def calculate_production(selected_items, meter_inputs, table_df, item_df, hours_
     ).fillna(0)
 
     item_m3_per_meter = item_df.set_index('Batch')['M3'].to_dict()
-    speed_m_per_min = 70
+    speed_m_per_min =  speed_df.iloc[0]['Speed']
 
 
     results = []
