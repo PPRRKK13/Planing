@@ -30,7 +30,7 @@ def calculate_production(selected_items, meter_inputs, table_df, item_df, hours_
     ).fillna(0)
 
     item_m3_per_meter = item_df.set_index('Batch')['M3'].to_dict()
-    speed_m_per_min = speed_df.iloc[]['Speed']
+    speed_m_per_min = speed_df.iloc[0]['Speed']
 
     results = []
     for item in selected_items:
