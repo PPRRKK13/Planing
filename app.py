@@ -13,7 +13,7 @@ def load_data():
     table_df = xls.parse("Table")
     item_df = xls.parse("Item Sizes per meter")
     hours_df = xls.parse("Hours per day")
-    speed_df = xls.parse("Manufacturing speed")
+    speed_df = 70
     return table_df, item_df, hours_df, speed_df
 
 
@@ -30,14 +30,7 @@ def calculate_production(selected_items, meter_inputs, table_df, item_df, hours_
     ).fillna(0)
 
     item_m3_per_meter = item_df.set_index('Batch')['M3'].to_dict()
-    speed_m_per_min = speed_df.iloc[0]['Speed']
-
-except IndexError:
-    print("IndexError: The DataFrame does not have enough rows.")
-except KeyError:
-    print("KeyError: The 'Speed' column is not present in the DataFrame.")
-
-
+    speed_m_per_min = 70
 
 
     results = []
