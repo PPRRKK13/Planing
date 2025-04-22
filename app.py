@@ -18,7 +18,7 @@ def load_data():
 
 @st.cache_data
 def get_available_items(table_df):
-    return sorted(table_df['Item'].unique())
+    return sorted(table_df['Batch'].unique())
 
 def calculate_production(selected_items, meter_inputs, table_df, item_df, hours_df, speed_df, availability):
     q1_yield = (
