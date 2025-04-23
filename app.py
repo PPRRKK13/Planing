@@ -7,7 +7,7 @@ st.set_page_config(page_title="Production Scheduler", layout="wide")
 # ---- Load data from Excel ----
 @st.cache_data
 def load_data():
-    xls = pd.ExcelFile("production_schedule_template.xlsx")
+    xls = pd.ExcelFile("For Phyton.xlsx")
     table_df = xls.parse("Table")
     item_df = xls.parse("Item Sizes per meter")
     speed_df = xls.parse("Manufacturing speed")
