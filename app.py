@@ -9,9 +9,9 @@ st.set_page_config(page_title="Production Scheduler", layout="wide")
 def load_data():
     xls = pd.ExcelFile("production_schedule_template.xlsx")
     table_df = xls.parse("Table")
-    item_df = xls.parse("Item sizes per meter")
-    speed_df = xls.parse("Speed")
-    hours_df = xls.parse("Shift Hours")
+    item_df = xls.parse("Item Sizes per meter")
+    speed_df = xls.parse("MAnufacturing speed")
+    hours_df = xls.parse("Hours per day")
     holiday_df = xls.parse("Holidays")
     return table_df, item_df, speed_df, hours_df, holiday_df
 
