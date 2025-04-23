@@ -14,9 +14,9 @@ def load_data():
 
     xls = pd.ExcelFile(file_path)
     table_df = xls.parse("Table")
-    item_df = xls.parse("Item sizes per meter")
-    speed_df = xls.parse("Machine speed")
-    hours_df = xls.parse("Shift hours")
+    item_df = xls.parse("Item Sizes per meter")
+    speed_df = xls.parse("Manufacturing speed")
+    hours_df = xls.parse("Hours per day")
     holiday_df = xls.parse("Holidays")
     
     # Convert Holiday Date column to datetime
