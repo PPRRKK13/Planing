@@ -3,106 +3,92 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-st.set_page_config(page_title="Production Planning", layout="wide")
+st.set_page_config(layout="wide")
 
-# --- Load data ---
 @st.cache_data
-def load_data(file_path="For Phyton.xlsx"):
+def load_data():
+    file_path = "For Phyton.xlsx"
     if not os.path.exists(file_path):
-        st.error("❌ Excel file not found. Make sure it's named 'For Phyton.xlsx' and in the same folder.")
+        st.error("❌ Excel file 'For Phyton.xlsx' not found. Please ensure it's in the same directory.")
         st.stop()
 
     xls = pd.ExcelFile(file_path)
     table_df = xls.parse("Table")
-    item_df = xls.parse("Item Sizes per meter")
-    speed_df = xls.parse("Manufacturing speed")
-    hours_df = xls.parse("Hours per day")
+    item_df = xls.parse("Item sizes per meter")
+    speed_df = xls.parse("Machine speed")
+    hours_df = xls.parse("Shift hours")
     holiday_df = xls.parse("Holidays")
-
-    holiday_df['Date'] = pd.to_datetime(holiday_df['Date'])
-
+    
+    # Convert Holiday Date column to datetime
+    holiday_df["Date"] = pd.to_datetime(holiday_df["Date"])
+    
     return table_df, item_df, speed_df, hours_df, holiday_df
 
-# --- Load everything ---
-table_df, item_df, speed_df, hours_df, holiday_df = load_data()
-
-# --- User input ---
-st.title("🛠️ Production Planning with Shift Calendar")
-
-start_date = st.date_input("📅 Select production start date", value=datetime.today())
-availability = st.slider("🕒 Availability %", min_value=10, max_value=100, value=100, step=10)
-
-# --- Processing ---
+@st.cache_data
 def calculate_schedule(table_df, item_df, speed_df, hours_df, holiday_df, start_date, availability):
-    # Prepare references
     item_m3_per_meter = item_df.set_index("Batch")["M3"].to_dict()
-    speed_m_per_min = speed_df.iloc[0]["Speed"]  # Assuming one row
-    total_available_per_shift = hours_df.set_index("Shift")["Hours"].to_dict()
-    holidays = set(holiday_df['Date'])
+    speed_m_per_min = speed_df.iloc[0]["Speed"]
+    daily_hours = hours_df.iloc[0]["Hours"]
+    minutes_per_day = daily_hours * 60
 
-    # Convert percentages
-    availability_factor = availability / 100
+    results = []
 
-    # Prepare task list
-    tasks = []
-    for _, row in table_df.iterrows():
-        item = row["Item"]
-        size = row["Size"]
-        batch = row["Batch"]
-        meters = row["Meters"]
-
-        m3_per_meter = item_m3_per_meter.get(batch, 0)
-        total_m3 = meters * m3_per_meter
-        time_required_hrs = (meters / speed_m_per_min) / 60  # meters / m/min = minutes
-
-        tasks.append({
-            "Item": item,
-            "Size": size,
-            "Batch": batch,
-            "Meters": meters,
-            "Hours Needed": time_required_hrs
-        })
-
-    # Schedule
     current_date = pd.to_datetime(start_date)
-    schedule = []
+    holidays = set(holiday_df["Date"])
 
-    for task in tasks:
-        hours_remaining = task["Hours Needed"]
+    for _, row in table_df.iterrows():
+        batch = row["Batch"]
+        volume_m3 = row["Volume [m3]"]
 
-        while hours_remaining > 0:
-            if current_date in holidays:
+        # Skip if item not available
+        if batch not in availability:
+            continue
+
+        m3_per_meter = item_m3_per_meter.get(batch, 1)
+        meters_needed = volume_m3 / m3_per_meter
+        total_minutes = meters_needed / speed_m_per_min
+        days_needed = int(total_minutes // minutes_per_day) + 1
+
+        for _ in range(days_needed):
+            while current_date in holidays or current_date.weekday() >= 5:  # Skip weekends/holidays
                 current_date += timedelta(days=1)
-                continue
 
-            for shift in ["Day", "Night"]:
-                if hours_remaining <= 0:
-                    break
+            results.append({
+                "Date": current_date.date(),
+                "Batch": batch,
+                "Planned Volume [m3]": min(volume_m3, m3_per_meter * speed_m_per_min * minutes_per_day)
+            })
 
-                hours_available = total_available_per_shift.get(shift, 0) * availability_factor
-                hours_used = min(hours_remaining, hours_available)
-
-                schedule.append({
-                    "Date": current_date.date(),
-                    "Shift": shift,
-                    "Item": task["Item"],
-                    "Batch": task["Batch"],
-                    "Meters": task["Meters"],
-                    "Hours Used": round(hours_used, 2)
-                })
-
-                hours_remaining -= hours_used
-
+            volume_m3 -= m3_per_meter * speed_m_per_min * minutes_per_day
             current_date += timedelta(days=1)
 
-    return pd.DataFrame(schedule)
+    return pd.DataFrame(results)
 
-# --- Run calculation ---
+# Load the data
+table_df, item_df, speed_df, hours_df, holiday_df = load_data()
+
+# Batch selector
+available_batches = sorted(table_df["Batch"].unique())
+selected_batches = st.multiselect("✅ Select batches to schedule", available_batches, default=available_batches)
+
+# Start date
+start_date = st.date_input("📅 Select production start date", datetime.today())
+
+# Schedule button
 if st.button("📊 Generate Schedule"):
-    result_df = calculate_schedule(table_df, item_df, speed_df, hours_df, holiday_df, start_date, availability)
-    st.success("✅ Schedule generated successfully!")
-    st.dataframe(result_df)
+    with st.spinner("Calculating production schedule..."):
+        result_df = calculate_schedule(
+            table_df[table_df["Batch"].isin(selected_batches)],
+            item_df,
+            speed_df,
+            hours_df,
+            holiday_df,
+            start_date,
+            selected_batches
+        )
 
-    # Optional download
-    csv = result_df.to_csv(index=False).encode("utf-8")
-    st.download_button("💾 Download Schedule CSV", csv, "schedule.csv", "text/csv")
+        st.success("✅ Schedule generated!")
+        st.dataframe(result_df)
+
+        csv = result_df.to_csv(index=False).encode("utf-8")
+        st.download_button("⬇️ Download Schedule CSV", csv, "production_schedule.csv", "text/csv
