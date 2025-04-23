@@ -1,101 +1,105 @@
 import streamlit as st
 import pandas as pd
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-# -------- Load Excel Data --------
+st.set_page_config(page_title="Production Scheduler", layout="wide")
+
+# ---- Load data from Excel ----
 @st.cache_data
 def load_data():
-    xls = pd.ExcelFile("For Phyton.xlsx")
+    xls = pd.ExcelFile("production_schedule_template.xlsx")
     table_df = xls.parse("Table")
-    item_df = xls.parse("Item Sizes per meter")
-    speed_df = xls.parse("Manufacturing speed")
-    hours_df = xls.parse("Hours per day")
-    holiday_df = xls.parse("Holidays")  # Sheet with one column 'Date' in datetime format
+    item_df = xls.parse("Item sizes per meter")
+    speed_df = xls.parse("Speed")
+    hours_df = xls.parse("Shift Hours")
+    holiday_df = xls.parse("Holidays")
     return table_df, item_df, speed_df, hours_df, holiday_df
 
-# -------- Latvian Holidays Helper --------
-def is_holiday(date, holidays):
-    return date in holidays
+# ---- Calculate production plan ----
+def calculate_schedule(table_df, item_df, speed_df, hours_df, holiday_df, start_date, availability):
+    # Merge M3 data into the table
+    table_df = table_df.merge(item_df, on="Batch", how="left")
 
-# -------- Production Calculation --------
-def calculate_schedule(table_df, item_df, speed_df, hours_df, holiday_df, start_date, availability, selected_batches, meter_inputs):
-    holidays = set(holiday_df['Date'].dt.date)
+    # Calculate actual M3 needed
+    table_df["Total M3"] = table_df["Meters Needed"] * table_df["M3"]
 
-    # Map batch to m3 per meter
-    m3_map = item_df.set_index("Batch")["M3"].to_dict()
+    # Load machine speed
     speed_m_per_min = speed_df.iloc[0]["Speed"]
 
-    # Get hours per shift type
-    shift_hours = hours_df.set_index("Type")["Hours"].to_dict()
-    hours_per_day = shift_hours.get(availability, 8)
-    minutes_per_day = hours_per_day * 60
+    # Combine shift hours by weekday and shift
+    shift_hours = hours_df.copy()
+    shift_hours["Weekday"] = shift_hours["Day"].map({
+        "Monday": 0, "Tuesday": 1, "Wednesday": 2,
+        "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6
+    })
 
-    schedule = []
+    # Convert holiday list to datetime
+    holiday_dates = pd.to_datetime(holiday_df["Date"]).dt.date
 
-    current_date = start_date
+    results = []
 
-    for batch in selected_batches:
-        meters = meter_inputs.get(batch, 0)
-        m3_per_meter = m3_map.get(batch, 0)
-        total_m3 = meters * m3_per_meter
-        total_minutes = meters / speed_m_per_min
+    current_datetime = start_date
+    for idx, row in table_df.iterrows():
+        batch = row["Batch"]
+        meters_needed = row["Meters Needed"]
+        m3_per_meter = row["M3"]
+        total_m3 = row["Total M3"]
 
-        while total_minutes > 0:
-            # Skip holidays
-            if is_holiday(current_date, holidays) or current_date.weekday() >= 5:
-                current_date += timedelta(days=1)
+        meters_remaining = meters_needed
+        hours_needed = meters_needed / speed_m_per_min / 60  # in hours
+
+        while meters_remaining > 0:
+            # Skip holiday
+            if current_datetime.date() in holiday_dates:
+                current_datetime += timedelta(days=1)
                 continue
 
-            work_minutes = min(total_minutes, minutes_per_day)
+            weekday = current_datetime.weekday()
 
-            schedule.append({
-                "Date": current_date,
-                "Batch": batch,
-                "Meters": round(work_minutes * speed_m_per_min, 2),
-                "M3": round(work_minutes * speed_m_per_min * m3_per_meter, 2),
-                "Shift Hours": round(work_minutes / 60, 2),
-            })
+            daily_shifts = shift_hours[shift_hours["Weekday"] == weekday]
+            for _, shift_row in daily_shifts.iterrows():
+                shift = shift_row["Shift"]
+                shift_hours_val = shift_row["Hours"]
 
-            total_minutes -= work_minutes
-            current_date += timedelta(days=1)
+                meters_this_shift = speed_m_per_min * shift_hours_val * 60
+                used_meters = min(meters_remaining, meters_this_shift)
+                used_m3 = used_meters * m3_per_meter
+                used_hours = used_meters / speed_m_per_min / 60
 
-    return pd.DataFrame(schedule)
+                results.append({
+                    "Batch": batch,
+                    "Shift Date": current_datetime.date(),
+                    "Shift": shift,
+                    "Used Meters": used_meters,
+                    "Used M3": used_m3,
+                    "Used Hours": used_hours
+                })
 
-# -------- Streamlit UI --------
-st.set_page_config(page_title="Production Planner", layout="wide")
-st.title("📊 Production Schedule Planner")
+                meters_remaining -= used_meters
 
-# Load data
+                if meters_remaining <= 0:
+                    break
+            current_datetime += timedelta(days=1)
+
+    return pd.DataFrame(results)
+
+# ---- Streamlit UI ----
+st.title("🛠️ Production Scheduling App")
+
 table_df, item_df, speed_df, hours_df, holiday_df = load_data()
 
-# Get list of available batches
-available_batches = sorted(table_df["Batch"].unique())
-selected_batches = st.multiselect("Select batch(es)", options=available_batches)
+start_date = st.date_input("Select start date for planning", datetime.today())
 
-# Input meters per selected batch
-meter_inputs = {}
-if selected_batches:
-    for batch in selected_batches:
-        meter_inputs[batch] = st.number_input(f"Enter meters for {batch}", min_value=0.0, key=batch)
-
-# Start date input
-start_date = st.date_input("Select start date")
-
-# Shift availability
-availability = st.selectbox("Select shift availability", ["1 shift", "2 shifts", "3 shifts"])
-
-# Generate Schedule
-if st.button("📅 Generate Schedule"):
-    if selected_batches and start_date:
+if st.button("Generate Schedule"):
+    with st.spinner("Calculating schedule..."):
         result_df = calculate_schedule(
-            table_df, item_df, speed_df, hours_df, holiday_df,
-            start_date, availability, selected_batches, meter_inputs
+            table_df, item_df, speed_df, hours_df, holiday_df, start_date, availability=None
         )
-        st.success("✅ Schedule generated!")
+        st.success("Schedule generated!")
+
+        # Show preview
         st.dataframe(result_df)
 
-        # Download CSV
+        # Download
         csv = result_df.to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Download Schedule CSV", csv, "production_schedule.csv", "text/csv")
-    else:
-        st.warning("Please select batches and enter a start date.")
