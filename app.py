@@ -15,7 +15,7 @@ def load_data(file_path="For Phyton.xlsx"):
     xls = pd.ExcelFile(file_path)
     table_df = xls.parse("Table")
     item_df = xls.parse("Item Sizes per meter")
-    speed_df = xls.parse("Speed")
+    speed_df = xls.parse("Manufacturing speed")
     hours_df = xls.parse("Hours per day")
     holiday_df = xls.parse("Holidays")
 
