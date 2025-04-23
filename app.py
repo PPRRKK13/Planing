@@ -90,5 +90,5 @@ if st.button("📊 Generate Schedule"):
         st.success("✅ Schedule generated!")
         st.dataframe(result_df)
 
-        csv = result_df.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ Download Schedule CSV", csv, "production_schedule.csv", "text/csv
+       csv = result_df.to_csv(index=False).encode("utf-8")
+st.download_button("⬇️ Download Schedule CSV", csv, "production_schedule.csv", "text/csv")
