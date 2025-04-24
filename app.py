@@ -5,11 +5,10 @@ import plotly.express as px
 st.set_page_config(layout="wide")
 st.title("📏 Production Planner with Q1 Yield")
 
-# ---- Upload Excel File ----
-uploaded_file = st.file_uploader("📤 Upload your Excel file", type=["xlsx"])
 
-if uploaded_file:
     # ---- Load Data ----
+@st.cache_data
+def load_data():
     xls = pd.ExcelFile(uploaded_file)
     table_df = xls.parse("Table")
     items_df = xls.parse("Item Sizes per meter")
