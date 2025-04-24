@@ -52,30 +52,43 @@ def calculate_production(selected_items, meter_inputs, table_df, item_df, hours_
     return pd.DataFrame(results)
 
 def compute_shift_schedule(total_hours_needed, hours_df):
-    schedule = []
-    start_time = datetime.strptime("2025-04-21 07:00", "%Y-%m-%d %H:%M")  # Assume planning starts Monday 7am
-    shifts = []
-    for _, row in hours_df.iterrows():
-        shift_start = datetime.combine(start_time.date(), row['Start'])
-        shift_end = datetime.combine(start_time.date(), row['End'])
-        if shift_end < shift_start:
-            shift_end += timedelta(days=1)
-        shift_duration = (shift_end - shift_start).total_seconds() / 3600 - 0.5
-        shifts.append((shift_start, shift_end, shift_duration))
-        start_time += timedelta(days=1)
-
-    allocated = 0
     calendar = []
-    for start, end, duration in shifts:
-        if allocated >= total_hours_needed:
-            break
-        used = min(duration, total_hours_needed - allocated)
-        allocated += used
-        calendar.append({
-            "Shift Start": start,
-            "Shift End": end,
-            "Planned Hours": round(used, 2)
-        })
+    allocated = 0
+    current_date = datetime.strptime("2025-04-21", "%Y-%m-%d")  # Starting from Monday
+    shift_index = 0
+
+    # Sort by weekday order to loop predictably
+    day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    hours_df['Day'] = pd.Categorical(hours_df['Day'], categories=day_order, ordered=True)
+    hours_df = hours_df.sort_values(['Day', 'Shift'])
+
+    # Repeat shifts weekly until hours are fully scheduled
+    while allocated < total_hours_needed:
+        for _, row in hours_df.iterrows():
+            if allocated >= total_hours_needed:
+                break
+
+            day_name = row['Day']
+            shift_name = row['Shift']
+            hours_available = row['Hours']
+
+            used = min(hours_available, total_hours_needed - allocated)
+            allocated += used
+
+            # Get correct weekday date
+            weekday_index = day_order.index(day_name)
+            target_date = current_date + timedelta(days=(weekday_index - current_date.weekday()) % 7)
+
+            calendar.append({
+                "Date": target_date.strftime("%Y-%m-%d"),
+                "Day": day_name,
+                "Shift": shift_name,
+                "Available Hours": hours_available,
+                "Used Hours": round(used, 2)
+            })
+
+        current_date += timedelta(days=7)  # Move to next week
+
     return pd.DataFrame(calendar)
 
 # --- STREAMLIT UI ---
