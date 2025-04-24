@@ -110,4 +110,4 @@ if st.button("Calculate Schedule"):
         st.dataframe(schedule_df)
 
         csv = schedule_df.to_csv(index=False).encode('utf-8')
-        st.download_button("⬇️ Download Shift Schedule as CSV", csv, "shift_schedule.csv", "text/
+        st.download_button("⬇️ Download Shift Schedule as CSV", csv, "shift_schedule.csv","text"/
