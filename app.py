@@ -9,7 +9,7 @@ st.title("📏 Production Planner with Q1 Yield")
     # ---- Load Data ----
 @st.cache_data
 def load_data():
-    xls = pd.ExcelFile(uploaded_file)
+    xls = pd.ExcelFile("For Phyton.xlsx")
     table_df = xls.parse("Table")
     items_df = xls.parse("Item Sizes per meter")
     hours_df = xls.parse("Hours per day")
