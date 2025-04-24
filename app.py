@@ -18,17 +18,17 @@ def load_data():
 
 @st.cache_data
 def get_available_items(table_df):
-    return sorted(table_df['Item'].unique())
+    return sorted(table_df['Batch'].unique())
 
 def calculate_production(selected_items, meter_inputs, table_df, item_df, hours_df, speed_df, availability):
     q1_yield = (
         table_df[table_df['Quality'] == 'Q1']
-        .groupby('Item')['Volume [m3]']
+        .groupby('Batch')['Volume [m3]']
         .sum()
-        / table_df.groupby('Item')['Volume [m3]'].sum()
+        / table_df.groupby('Batch')['Volume [m3]'].sum()
     ).fillna(0)
 
-    item_m3_per_meter = item_df.set_index('Item')['M3'].to_dict()
+    item_m3_per_meter = item_df.set_index('Batch')['M3'].to_dict()
     speed_m_per_min = speed_df.iloc[0]['Speed']
 
     results = []
