@@ -51,18 +51,16 @@ def calculate_production(selected_items, meter_inputs, table_df, item_df, hours_
         })
     return pd.DataFrame(results)
 
-def compute_shift_schedule(total_hours_needed, hours_df):
+def compute_shift_schedule(total_hours_needed, hours_df, total_meters):
     calendar = []
     allocated = 0
+    meters_allocated = 0
     current_date = datetime.strptime("2025-04-21", "%Y-%m-%d")  # Starting from Monday
-    shift_index = 0
 
-    # Sort by weekday order to loop predictably
     day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     hours_df['Day'] = pd.Categorical(hours_df['Day'], categories=day_order, ordered=True)
     hours_df = hours_df.sort_values(['Day', 'Shift'])
 
-    # Repeat shifts weekly until hours are fully scheduled
     while allocated < total_hours_needed:
         for _, row in hours_df.iterrows():
             if allocated >= total_hours_needed:
@@ -72,10 +70,13 @@ def compute_shift_schedule(total_hours_needed, hours_df):
             shift_name = row['Shift']
             hours_available = row['Hours']
 
-            used = min(hours_available, total_hours_needed - allocated)
-            allocated += used
+            used_hours = min(hours_available, total_hours_needed - allocated)
+            hour_ratio = used_hours / total_hours_needed if total_hours_needed else 0
+            meters_for_shift = total_meters * hour_ratio
 
-            # Get correct weekday date
+            allocated += used_hours
+            meters_allocated += meters_for_shift
+
             weekday_index = day_order.index(day_name)
             target_date = current_date + timedelta(days=(weekday_index - current_date.weekday()) % 7)
 
@@ -84,13 +85,13 @@ def compute_shift_schedule(total_hours_needed, hours_df):
                 "Day": day_name,
                 "Shift": shift_name,
                 "Available Hours": hours_available,
-                "Used Hours": round(used, 2)
+                "Used Hours": round(used_hours, 2),
+                "Planned Meters": round(meters_for_shift, 2)
             })
 
-        current_date += timedelta(days=7)  # Move to next week
+        current_date += timedelta(days=7)
 
     return pd.DataFrame(calendar)
-
 # --- STREAMLIT UI ---
 st.set_page_config("Production Planner", layout="wide")
 st.title("📦 Production Planning Calculator")
@@ -126,8 +127,22 @@ if selected_items:
 
     # --- SCHEDULE ---
     st.subheader("📅 Shift Calendar")
-    calendar_df = compute_shift_schedule(total_hours, hours_df)
+   calendar_df = compute_shift_schedule(total_hours, hours_df, df_results['Adjusted Meters'].sum())
     st.dataframe(calendar_df)
+
+import altair as alt
+
+st.subheader("📈 Meters per Shift")
+
+calendar_df['Shift Label'] = calendar_df['Date'] + " " + calendar_df['Shift']
+
+bar_chart = alt.Chart(calendar_df).mark_bar().encode(
+    x=alt.X('Shift Label', sort=None, title="Shift"),
+    y=alt.Y('Planned Meters', title="Adjusted Meters"),
+    color=alt.Color('Shift', legend=None)
+).properties(width=800, height=400)
+
+st.altair_chart(bar_chart, use_container_width=True)
 
     # --- DOWNLOAD ---
     with st.expander("⬇️ Download Results"):
