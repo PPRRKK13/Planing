@@ -1,113 +1,84 @@
 import streamlit as st
 import pandas as pd
-import datetime
+import plotly.express as px
 
-st.set_page_config(page_title="Production Planning App", layout="wide")
+st.set_page_config(layout="wide")
+st.title("📏 Production Planner with Q1 Yield")
 
-# 📥 Load Excel Data
-@st.cache_data
-def load_data():
-    xls = pd.ExcelFile("For Phyton.xlsx")
+# ---- Upload Excel File ----
+uploaded_file = st.file_uploader("📤 Upload your Excel file", type=["xlsx"])
+
+if uploaded_file:
+    # ---- Load Data ----
+    xls = pd.ExcelFile(uploaded_file)
     table_df = xls.parse("Table")
-    item_df = xls.parse("Item Sizes per meter")
-    speed_df = xls.parse("Manufacturing speed")
+    items_df = xls.parse("Item Sizes per meter")
     hours_df = xls.parse("Hours per day")
-    holiday_df = xls.parse("Holidays")
-    return table_df, item_df, speed_df, hours_df, holiday_df
 
-# 🔧 Shift Calendar Logic
-def generate_shift_calendar(start_date, hours_needed, hours_df, holidays):
-    shift_calendar = []
-    current_date = pd.to_datetime(start_date)
-    remaining_hours = hours_needed
+    # Clean item size table
+    items_cleaned = items_df.rename(columns={items_df.columns[0]: "Item", items_df.columns[1]: "M3 per meter"})
 
-    hours_by_day_shift = (
-        hours_df.groupby(['Day', 'Shift'])['Hours'].sum().reset_index()
-    )
+    # ---- Calculate Q1 Yield ----
+    total_volume = table_df.groupby("Batch")["Volume [m3]"].sum().reset_index(name="Total Volume")
+    q1_volume = table_df[table_df["Quality"] == "Q1"].groupby("Batch")["Volume [m3]"].sum().reset_index(name="Q1 Volume")
+    q1_yield = pd.merge(q1_volume, total_volume, on="Batch")
+    q1_yield["Q1 Yield"] = q1_yield["Q1 Volume"] / q1_yield["Total Volume"]
+    q1_yield = q1_yield.rename(columns={"Batch": "Item"})
 
-    holidays = pd.to_datetime(holidays['Date']).dt.date
+    # Merge with item sizes
+    item_master = pd.merge(items_cleaned, q1_yield[["Item", "Q1 Yield"]], on="Item", how="inner")
 
-    while remaining_hours > 0:
-        day_name = current_date.strftime("%A")
-        for _, row in hours_by_day_shift[hours_by_day_shift['Day'] == day_name].iterrows():
-            if current_date.date() not in holidays:
-                shift_hours = row['Hours']
-                shift_type = row['Shift']
-                used_hours = min(remaining_hours, shift_hours)
-                shift_calendar.append({
-                    "Date": current_date.date(),
-                    "Shift": shift_type,
-                    "Used Hours": used_hours
+    st.subheader("🛠 Select Items and Enter Required Meters")
+    selected_items = st.multiselect("Choose Items", item_master["Item"].unique())
+
+    if selected_items:
+        meters_input = {}
+        for item in selected_items:
+            meters = st.number_input(f"Meters needed for {item}", min_value=0, step=100, key=item)
+            meters_input[item] = meters
+
+        # ---- Calculations ----
+        df = item_master[item_master["Item"].isin(meters_input.keys())].copy()
+        df["Meters Needed"] = df["Item"].map(meters_input)
+
+        speed_mph = 70 * 60  # 70 meters/min
+        df["Adjusted Meters"] = df["Meters Needed"] / df["Q1 Yield"]
+        df["Good m/h"] = speed_mph * df["Q1 Yield"]
+        df["Hours Needed"] = df["Adjusted Meters"] / df["Good m/h"]
+        df["m3 Needed"] = df["Adjusted Meters"] * df["M3 per meter"]
+
+        st.subheader("📊 Calculation Results")
+        st.dataframe(df[["Item", "Meters Needed", "Q1 Yield", "Adjusted Meters", "Hours Needed", "m3 Needed"]])
+
+        # ---- Calendar Simulation ----
+        st.subheader("📆 Monthly Production Simulation")
+
+        hours_per_day = hours_df["Hours"].iloc[0]
+        days = []
+        cumulative_hours = 0
+        day_num = 1
+
+        for i, row in df.iterrows():
+            hours_needed = row["Hours Needed"]
+            while hours_needed > 0:
+                used = min(hours_per_day, hours_needed)
+                days.append({
+                    "Day": f"Day {day_num}",
+                    "Item": row["Item"],
+                    "Hours": used
                 })
-                remaining_hours -= used_hours
-                if remaining_hours <= 0:
-                    break
-        current_date += pd.Timedelta(days=1)
+                hours_needed -= used
+                cumulative_hours += used
+                if used == hours_per_day:
+                    day_num += 1
 
-    return pd.DataFrame(shift_calendar)
+        calendar_df = pd.DataFrame(days)
 
-# 🧮 Schedule Calculation
-def calculate_schedule(batch, meters_needed, table_df, item_df, speed_df, hours_df, holiday_df):
-    # Q1 Yield (% to decimal)
-    batch_data = table_df[table_df["Batch"] == batch]
-    if batch_data.empty:
-        st.error(f"No Q1 data found for batch {batch}")
-        return None
-    q1_yield = batch_data["Q1 Yield %"].astype(str).str.replace('%', '').astype(float).mean() / 100
+        fig = px.bar(calendar_df, x="Day", y="Hours", color="Item", title="Production Plan (Hours per Day)", text="Item")
+        st.plotly_chart(fig, use_container_width=True)
 
-    # Adjusted meters
-    adjusted_meters = meters_needed / q1_yield
-
-    # M3 per meter
-    m3_per_meter = item_df[item_df["Batch"] == batch]["M3"].values[0]
-    total_m3 = adjusted_meters * m3_per_meter
-
-    # Speed (meters per hour)
-    speed = float(speed_df.iloc[0][0])
-    hours_needed = adjusted_meters / speed
-
-    # Shift calendar
-    shift_df = generate_shift_calendar(start_date, hours_needed, hours_df, holiday_df)
-
-    # Summary Table
-    summary = pd.DataFrame({
-        "Batch": [batch],
-        "Requested Meters": [meters_needed],
-        "Q1 Yield Avg": [round(q1_yield * 100, 2)],
-        "Adjusted Meters": [round(adjusted_meters, 2)],
-        "Total M3": [round(total_m3, 2)],
-        "Hours Needed": [round(hours_needed, 2)]
-    })
-
-    return summary, shift_df
-
-# 🖥️ Interface
-st.title("📦 Production Planning App (Q1 Based)")
-
-# Load data
-table_df, item_df, speed_df, hours_df, holiday_df = load_data()
-
-# Batch selection
-batches = sorted(table_df["Batch"].unique())
-selected_batch = st.selectbox("Select a Batch", batches)
-
-# Meter input
-meters_input = st.number_input("Enter Meters to Produce", min_value=1, value=100)
-
-# Start date
-start_date = st.date_input("Select Start Date", datetime.date.today())
-
-if st.button("Calculate Schedule"):
-    summary_df, schedule_df = calculate_schedule(
-        selected_batch, meters_input, table_df, item_df, speed_df, hours_df, holiday_df
-    )
-
-    if summary_df is not None:
-        st.subheader("📊 Production Summary")
-        st.dataframe(summary_df)
-
-        st.subheader("📅 Shift Calendar")
-        st.dataframe(schedule_df)
-
-        csv = schedule_df.to_csv(index=False).encode('utf-8')
-        st.download_button("⬇️ Download Shift Schedule as CSV", csv, "shift_schedule.csv","text")
+        # Export option
+        st.subheader("💾 Export Results")
+        export_df = df[["Item", "Meters Needed", "Q1 Yield", "Adjusted Meters", "Hours Needed", "m3 Needed"]]
+        export_excel = export_df.to_excel(index=False, engine='openpyxl')
+        st.download_button("Download Calculated Table as Excel", data=export_excel, file_name="production_plan.xlsx")
