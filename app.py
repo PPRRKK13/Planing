@@ -127,22 +127,18 @@ if selected_items:
 
     # --- SCHEDULE ---
     st.subheader("📅 Shift Calendar")
-   
+    calendar_df = compute_shift_schedule(total_hours, hours_df, df_results['Adjusted Meters'].sum())
     st.dataframe(calendar_df)
-  calendar_df = compute_shift_schedule(total_hours, hours_df, df_results['Adjusted Meters'].sum())
-import altair as alt
 
-st.subheader("📈 Meters per Shift")
-
-calendar_df['Shift Label'] = calendar_df['Date'] + " " + calendar_df['Shift']
-
-bar_chart = alt.Chart(calendar_df).mark_bar().encode(
-    x=alt.X('Shift Label', sort=None, title="Shift"),
-    y=alt.Y('Planned Meters', title="Adjusted Meters"),
-    color=alt.Color('Shift', legend=None)
-).properties(width=800, height=400)
-
-st.altair_chart(bar_chart, use_container_width=True)
+    # --- CHART ---
+    st.subheader("📈 Meters per Shift")
+    calendar_df['Shift Label'] = calendar_df['Date'] + " " + calendar_df['Shift']
+    bar_chart = alt.Chart(calendar_df).mark_bar().encode(
+        x=alt.X('Shift Label', sort=None, title="Shift"),
+        y=alt.Y('Planned Meters', title="Adjusted Meters"),
+        color=alt.Color('Shift', legend=None)
+    ).properties(width=800, height=400)
+    st.altair_chart(bar_chart, use_container_width=True)
 
     # --- DOWNLOAD ---
     with st.expander("⬇️ Download Results"):
