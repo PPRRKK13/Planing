@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import altair as alt
 from datetime import datetime, timedelta
 
 # --- CONFIG ---
