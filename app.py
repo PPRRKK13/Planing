@@ -15,7 +15,9 @@ def load_data():
     item_df = xls.parse("Item Sizes per meter")
     hours_df = xls.parse("Hours per day")
     speed_df = xls.parse("Manufacturing speed")
-    return table_df, item_df, hours_df, speed_df
+    holiday_df = xls.parse("Holidays")
+holiday_df["Date"] = pd.to_datetime(holiday_df["Date"])
+    return table_df, item_df, hours_df, speed_df, holiday_df
 
 @st.cache_data
 def get_available_items(table_df):
@@ -52,47 +54,43 @@ def calculate_production(selected_items, meter_inputs, table_df, item_df, hours_
         })
     return pd.DataFrame(results)
 
-def compute_shift_schedule(total_hours_needed, hours_df, total_meters):
-    calendar = []
-    allocated = 0
-    meters_allocated = 0
-    current_date = datetime.strptime("2025-04-21", "%Y-%m-%d")  # Starting from Monday
+def compute_shift_schedule(total_hours_needed, hours_df, holiday_df):
+    schedule = []
+    start_date = datetime.strptime("2025-04-21", "%Y-%m-%d")
+    total_allocated = 0
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-    day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    hours_df['Day'] = pd.Categorical(hours_df['Day'], categories=day_order, ordered=True)
-    hours_df = hours_df.sort_values(['Day', 'Shift'])
+    while total_allocated < total_hours_needed:
+        for shift_day in hours_df["Day"].unique():
+            for shift_type in ["Day", "Night"]:
+                match = hours_df[(hours_df["Day"] == shift_day) & (hours_df["Shift"] == shift_type)]
+                if match.empty:
+                    continue
+                hours = match["Hours"].values[0]
+                current_date = start_date + timedelta(days=day_names.index(shift_day))
 
-    while allocated < total_hours_needed:
-        for _, row in hours_df.iterrows():
-            if allocated >= total_hours_needed:
+                # Skip if it's a holiday
+                if current_date.date() in holiday_df["Date"].dt.date.values:
+                    continue
+
+                usable_hours = min(hours, total_hours_needed - total_allocated)
+                total_allocated += usable_hours
+
+                schedule.append({
+                    "Day": shift_day,
+                    "Shift": shift_type,
+                    "Date": current_date.date(),
+                    "Planned Hours": round(usable_hours, 2)
+                })
+
+                if total_allocated >= total_hours_needed:
+                    break
+            if total_allocated >= total_hours_needed:
                 break
 
-            day_name = row['Day']
-            shift_name = row['Shift']
-            hours_available = row['Hours']
+        start_date += timedelta(weeks=1)
 
-            used_hours = min(hours_available, total_hours_needed - allocated)
-            hour_ratio = used_hours / total_hours_needed if total_hours_needed else 0
-            meters_for_shift = total_meters * hour_ratio
-
-            allocated += used_hours
-            meters_allocated += meters_for_shift
-
-            weekday_index = day_order.index(day_name)
-            target_date = current_date + timedelta(days=(weekday_index - current_date.weekday()) % 7)
-
-            calendar.append({
-                "Date": target_date.strftime("%Y-%m-%d"),
-                "Day": day_name,
-                "Shift": shift_name,
-                "Available Hours": hours_available,
-                "Used Hours": round(used_hours, 2),
-                "Planned Meters": round(meters_for_shift, 2)
-            })
-
-        current_date += timedelta(days=7)
-
-    return pd.DataFrame(calendar)
+    return pd.DataFrame(schedule)
 # --- STREAMLIT UI ---
 st.set_page_config("Production Planner", layout="wide")
 st.title("📦 Production Planning Calculator")
@@ -103,7 +101,7 @@ if not os.path.exists(EXCEL_FILE):
     st.stop()
 
 # --- LOAD DATA ---
-table_df, item_df, hours_df, speed_df = load_data()
+table_df, item_df, hours_df, speed_df, holiday_df = load_data()
 availability = st.slider("⏳ Estimated Availability % (Unplanned Stops etc)", 0, 100, 85)
 
 # --- ITEM SELECTION ---
@@ -128,7 +126,7 @@ if selected_items:
 
     # --- SCHEDULE ---
     st.subheader("📅 Shift Calendar")
-    calendar_df = compute_shift_schedule(total_hours, hours_df, df_results['Adjusted Meters'].sum())
+    calendar_df = compute_shift_schedule(total_hours, hours_df, holiday_df)
     st.dataframe(calendar_df)
 
     # --- CHART ---
