@@ -127,9 +127,9 @@ if selected_items:
 
     # --- SCHEDULE ---
     st.subheader("📅 Shift Calendar")
-   calendar_df = compute_shift_schedule(total_hours, hours_df, df_results['Adjusted Meters'].sum())
+   
     st.dataframe(calendar_df)
-
+  calendar_df = compute_shift_schedule(total_hours, hours_df, df_results['Adjusted Meters'].sum())
 import altair as alt
 
 st.subheader("📈 Meters per Shift")
