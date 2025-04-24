@@ -9,7 +9,7 @@ st.set_page_config(page_title="Production Planning App", layout="wide")
 def load_data():
     xls = pd.ExcelFile("For Phyton.xlsx")
     table_df = xls.parse("Table")
-    item_df = xls.parse("Item sizes per meter")
+    item_df = xls.parse("Item Sizes per meter")
     speed_df = xls.parse("Manufacturing speed")
     hours_df = xls.parse("Hours per day")
     holiday_df = xls.parse("Holidays")
