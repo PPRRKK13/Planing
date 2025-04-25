@@ -124,13 +124,13 @@ if selected_items:
     total_hours = df_results['Hours Needed'].sum()
     st.markdown(f"### 🕒 Total Estimated Hours: **{round(total_hours, 2)} hrs**")
 
-    # --- SCHEDULE ---
-    st.subheader("📅 Shift Calendar")
-    calendar_df = compute_shift_schedule(total_hours, hours_df, holiday_df)
-    st.dataframe(calendar_df)
+ # --- SCHEDULE ---
+st.subheader("📅 Shift Calendar")
+calendar_df = compute_shift_schedule(total_hours, hours_df, holiday_df)
+st.dataframe(calendar_df)
 
-    # --- CHART ---
-   st.subheader("📈Planned Shift Load")
+# --- CHART ---
+st.subheader("📈 Planned Shift Load")
 
 calendar_df['Shift Label'] = calendar_df['Date'].dt.strftime('%Y-%m-%d') + " " + calendar_df['Shift']
 
@@ -144,7 +144,6 @@ bar_chart = alt.Chart(calendar_df).mark_bar().encode(
 )
 
 st.altair_chart(bar_chart, use_container_width=True)
-
     # --- DOWNLOAD ---
 with st.expander("⬇️Download Results"):
         st.download_button("Download Production Plan (CSV)", df_results.to_csv(index=False), file_name="production_plan.csv")
