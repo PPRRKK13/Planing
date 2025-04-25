@@ -115,19 +115,18 @@ if selected_items:
     for item in selected_items:
         meter_inputs[item] = st.number_input(f"Meters needed for {item}", min_value=0.0, value=100.0, step=10.0)
 
-# --- CALCULATE ---
 if selected_items:
     df_results = calculate_production(selected_items, meter_inputs, table_df, item_df, hours_df, speed_df, availability)
     st.subheader("📊 Production Summary")
     st.dataframe(df_results)
 
-    total_hours = df_results['Hours Needed'].sum()
+    total_hours = df_results['Hours Needed'].sum()  # ✅ Make sure this line is here
     st.markdown(f"### 🕒 Total Estimated Hours: **{round(total_hours, 2)} hrs**")
 
- # --- SCHEDULE ---
-st.subheader("📅 Shift Calendar")
-calendar_df = compute_shift_schedule(total_hours, hours_df, holiday_df)
-st.dataframe(calendar_df)
+    # --- SCHEDULE ---
+    st.subheader("📅 Shift Calendar")
+    calendar_df = compute_shift_schedule(total_hours, hours_df, holiday_df)  # ✅ holiday_df must be passed here
+    st.dataframe(calendar_df)
 
 # --- CHART ---
 st.subheader("📈 Planned Shift Load")
