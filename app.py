@@ -139,6 +139,8 @@ if selected_items:
     ).properties(width=800, height=400)
     st.altair_chart(bar_chart, use_container_width=True)
 
+st.write(calendar_df.dtypes)
+st.write(calendar_df.head())
     # --- DOWNLOAD ---
 with st.expander("⬇️Download Results"):
         st.download_button("Download Production Plan (CSV)", df_results.to_csv(index=False), file_name="production_plan.csv")
