@@ -130,7 +130,8 @@ if selected_items:
 
 # --- CHART ---
 st.subheader("📈 Planned Shift Load")
-
+st.write("🧾 Shift calendar raw data:")
+st.dataframe(calendar_df)
 calendar_df['Shift Label'] = calendar_df['Date'].dt.strftime('%Y-%m-%d') + " " + calendar_df['Shift']
 
 bar_chart = alt.Chart(calendar_df).mark_bar().encode(
