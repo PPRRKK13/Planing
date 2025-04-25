@@ -130,7 +130,7 @@ if selected_items:
     st.dataframe(calendar_df)
 
     # --- CHART ---
-   st.subheader("📈Planned Shift Load")
+   st.subheader("📈Planned Shift Load" )
 
 calendar_df['Shift Label'] = calendar_df['Date'].dt.strftime('%Y-%m-%d') + " " + calendar_df['Shift']
 
