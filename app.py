@@ -130,17 +130,21 @@ if selected_items:
     st.dataframe(calendar_df)
 
     # --- CHART ---
-    st.subheader("📈 Meters per Shift")
-    calendar_df['Shift Label'] = calendar_df['Date'].astype(str) + " " + calendar_df['Shift']
-    bar_chart = alt.Chart(calendar_df).mark_bar().encode(
-        x=alt.X('Shift Label', sort=None, title="Shift"),
-        y=alt.Y('Planned Meters', title="Adjusted Meters"),
-        color=alt.Color('Shift', legend=None)
-    ).properties(width=800, height=400)
-    st.altair_chart(bar_chart, use_container_width=True)
+   st.subheader("📈 Planned Shift Load")
 
-st.write(calendar_df.dtypes)
-st.write(calendar_df.head())
+calendar_df['Shift Label'] = calendar_df['Date'].dt.strftime('%Y-%m-%d') + " " + calendar_df['Shift']
+
+bar_chart = alt.Chart(calendar_df).mark_bar().encode(
+    x=alt.X('Shift Label:N', sort=None, title="Shift"),
+    y=alt.Y('Planned Hours:Q', title="Hours"),
+    tooltip=['Shift Label', 'Planned Hours']
+).properties(
+    width=800,
+    height=400
+)
+
+st.altair_chart(bar_chart, use_container_width=True)
+
     # --- DOWNLOAD ---
 with st.expander("⬇️Download Results"):
         st.download_button("Download Production Plan (CSV)", df_results.to_csv(index=False), file_name="production_plan.csv")
