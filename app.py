@@ -128,7 +128,7 @@ if selected_items:
     calendar_df = compute_shift_schedule(total_hours, hours_df, holiday_df)  # ✅ holiday_df must be passed here
     st.write("🧾 Debug: Shift Schedule Columns")
     st.write(calendar_df.columns.tolist())
-
+    st.dataframe(calendar_df)
    st.dataframe(calendar_df)
 # --- CHART ---
 st.subheader("📈 Planned Shift Load")
