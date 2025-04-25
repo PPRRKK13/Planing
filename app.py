@@ -138,20 +138,7 @@ if selected_items:
         color=alt.Color('Shift', legend=None)
     ).properties(width=800, height=400)
     st.altair_chart(bar_chart, use_container_width=True)
-st.subheader("📈 Planned Shift Load")
 
-calendar_df['Shift Label'] = calendar_df['Date'].astype(str) + " " + calendar_df['Shift']
-
-bar_chart = alt.Chart(calendar_df).mark_bar().encode(
-    x=alt.X('Shift Label:N', sort=None, title="Shift"),
-    y=alt.Y('Planned Hours:Q', title="Hours"),
-    tooltip=['Date', 'Shift', 'Planned Hours']
-).properties(
-    width=700,
-    height=400
-)
-
-st.altair_chart(bar_chart, use_container_width=True)
     # --- DOWNLOAD ---
 with st.expander("⬇️Download Results"):
         st.download_button("Download Production Plan (CSV)", df_results.to_csv(index=False), file_name="production_plan.csv")
