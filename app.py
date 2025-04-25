@@ -153,6 +153,6 @@ bar_chart = alt.Chart(calendar_df).mark_bar().encode(
 
 st.altair_chart(bar_chart, use_container_width=True)
     # --- DOWNLOAD ---
-    with st.expander("⬇️Download Results"):
+with st.expander("⬇️Download Results"):
         st.download_button("Download Production Plan (CSV)", df_results.to_csv(index=False), file_name="production_plan.csv")
         st.download_button("Download Shift Calendar (CSV)", calendar_df.to_csv(index=False), file_name="shift_schedule.csv")
