@@ -114,7 +114,7 @@ if selected_items:
     st.subheader("🧮 Enter Needed Meters for Each Item")
     for item in selected_items:
         meter_inputs[item] = st.number_input(f"Meters needed for {item}", min_value=0.0, value=100.0, step=10.0)
-
+# --- CALCULATE ---
 if selected_items:
     df_results = calculate_production(selected_items, meter_inputs, table_df, item_df, hours_df, speed_df, availability)
     st.subheader("📊 Production Summary")
@@ -126,8 +126,7 @@ if selected_items:
     # --- SCHEDULE ---
     st.subheader("📅 Shift Calendar")
     calendar_df = compute_shift_schedule(total_hours, hours_df, holiday_df)  # ✅ holiday_df must be passed here
-    
-   st.dataframe(calendar_df)
+    st.dataframe(calendar_df)
 # --- CHART ---
 st.subheader("📈 Planned Shift Load")
 
