@@ -15,9 +15,9 @@ def load_data():
     item_df = xls.parse("Item Sizes per meter")
     hours_df = xls.parse("Hours per day")
     speed_df = xls.parse("Manufacturing speed")
-    holiday_df = xls.parse("Holidays")
-    holiday_df["Date"] = pd.to_datetime(holiday_df["Date"])
-    return table_df, item_df, hours_df, speed_df, holiday_df,
+    holiday_df = xls.parse("Holidays")  # ✅ Load holiday sheet
+    holiday_df['Date'] = pd.to_datetime(holiday_df['Date'], dayfirst=True)  # Ensure dates are parsed
+    return table_df, item_df, hours_df, speed_df, holiday_df
 
 @st.cache_data
 def get_available_items(table_df):
