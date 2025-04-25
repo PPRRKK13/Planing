@@ -130,7 +130,6 @@ if selected_items:
     st.write(calendar_df.columns.tolist())
 
    st.dataframe(calendar_df)
-
 # --- CHART ---
 st.subheader("📈 Planned Shift Load")
 st.write("🧾 Shift calendar raw data:")
